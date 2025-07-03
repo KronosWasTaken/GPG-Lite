@@ -12,6 +12,7 @@ def hybrid_encrypt_file(infile, outfile, pubkey, password):
     encrypt_cbc_file(infile, tmp_enc, aes_key, iv=iv)
     enc_key = rsa_encrypt_oaep(aes_key, pubkey)
     with open(outfile, 'wb') as out_f, open(tmp_enc, 'rb') as enc_f:
+        out_f.write(b'GPG-HYB1')  # 8-byte header for hybrid
         out_f.write(salt)
         out_f.write(iv)
         out_f.write(len(enc_key).to_bytes(2, 'big'))
@@ -21,6 +22,13 @@ def hybrid_encrypt_file(infile, outfile, pubkey, password):
 
 def hybrid_decrypt_file(infile, outfile, privkey, password):
     with open(infile, 'rb') as in_f:
+        header = in_f.read(8)
+        if header != b'GPG-HYB1':
+            if header == b'GPG-AES1':
+                print("Error: This file was encrypted with AES-only mode. Please use option 2 for decryption.")
+            else:
+                print("Error: This file does not appear to be a hybrid-encrypted file or is corrupted.")
+            return
         salt = in_f.read(16)
         iv = in_f.read(16)
         key_len = int.from_bytes(in_f.read(2), 'big')

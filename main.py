@@ -35,6 +35,7 @@ def main():
             tmp_outfile = outfile + ".tmp"
             encrypt_cbc_file(infile, tmp_outfile, key)
             with open(outfile, 'wb') as out_f, open(tmp_outfile, 'rb') as tmp_f:
+                out_f.write(b'GPG-AES1')  # 8-byte header for AES-only
                 out_f.write(salt)
                 out_f.write(tmp_f.read())
             os.remove(tmp_outfile)
@@ -44,6 +45,13 @@ def main():
             infile = input("Enter input file path: ").strip()
             outfile = input("Enter output file path: ").strip()
             with open(infile, 'rb') as f:
+                header = f.read(8)
+                if header != b'GPG-AES1':
+                    if header == b'GPG-HYB1':
+                        print("Error: This file was encrypted with hybrid (AES+RSA) mode. Please use option 5 for decryption.")
+                    else:
+                        print("Error: This file does not appear to be an AES-encrypted file or is corrupted.")
+                    return
                 salt = f.read(16)
                 rest = f.read()
             key = derive_key(password, salt)
@@ -78,6 +86,7 @@ def main():
             pubfile = input("Enter recipient public key file: ").strip()
             infile = input("Enter input file path: ").strip()
             outfile = input("Enter output file path: ").strip()
+            print("IMPORTANT: You must share the password you use here with the recipient, securely.")
             password = input("Enter password for file encryption: ")
             pem = input("Is the public key in PEM format? (y/n): ").strip().lower() == 'y'
             if pem:
@@ -89,6 +98,7 @@ def main():
             privfile = input("Enter your private key file: ").strip()
             infile = input("Enter input file path: ").strip()
             outfile = input("Enter output file path: ").strip()
+            print("IMPORTANT: Enter the password that was used by the sender during encryption. This is NOT your own password.")
             password = input("Enter password for file decryption: ")
             pem = input("Is the private key in PEM format? (y/n): ").strip().lower() == 'y'
             if pem:
